@@ -3,7 +3,12 @@
     [Log]
     public interface IAccountingService
     {
-        string GetClientAccounts(string client);
+        string GetClientAccounts(De client);
+    }
+
+    public class De
+    {
+        public string A { get; set; }
     }
 }
 

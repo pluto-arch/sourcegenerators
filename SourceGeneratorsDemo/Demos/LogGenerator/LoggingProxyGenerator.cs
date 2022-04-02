@@ -15,14 +15,7 @@ namespace LogGenerator
         /// <inheritdoc />
         public void Initialize(GeneratorInitializationContext context)
         {
-#if DEBUG
-            if (!Debugger.IsAttached)
-            {
-                Debugger.Launch();
-            }
-#endif 
             context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
-            Debug.WriteLine("Initalize code generator");
         }
 
         /// <inheritdoc />
@@ -97,33 +90,32 @@ namespace LogGenerator
             var sb = new StringBuilder();
             var proxyName = targetType.Name.Substring(1) + "LoggingProxy";
             sb.Append($@"using System;
-                    using System.Diagnostics;
+                    using Microsoft.Extensions.Logging;
 
                     namespace {namespaceName}
                     {{
                           public static partial class LoggingExtensions
                           {{
-                             public static {fullQualifiedName} WithLogging(this {fullQualifiedName} baseInterface) => new {proxyName}(baseInterface);
+                             public static {fullQualifiedName} WithLogging(this {fullQualifiedName} baseInterface,ILogger logger) => new {proxyName}(baseInterface,logger);
                           }}
 
                           public class {proxyName} : {fullQualifiedName}
                           {{
                                 private readonly {fullQualifiedName} _target;
-                                public {proxyName}({fullQualifiedName} target) => _target = target;");
+                                private readonly ILogger _logger;
+                                public {proxyName}({fullQualifiedName} target,ILogger logger) {{_target = target;_logger=logger;}}");
                                 foreach (var interfaceMethod in allInterfaceMethods)
                                 {
                                     var containingType = interfaceMethod.ContainingType;
                                     var parametersList = string.Join(", ", interfaceMethod.Parameters.Select(x => $"{GetFullQualifiedName(x.Type)} {x.Name}"));
-                                    var argumentLog = string.Join(", ", interfaceMethod.Parameters.Select(x => $"{x.Name} = {{{x.Name}}}"));
                                     var argumentList = string.Join(", ", interfaceMethod.Parameters.Select(x => x.Name));
                                     var isVoid = interfaceMethod.ReturnsVoid;
                                     var interfaceFullyQualifiedName = GetFullQualifiedName(containingType);
+
                                     sb.Append($@"
                                     {interfaceMethod.ReturnType} {interfaceFullyQualifiedName}.{interfaceMethod.Name}({parametersList})
                                     {{
-                                        Console.WriteLine({$"$\"method started Arguments: {argumentLog}\""});
-                                        var sw = new Stopwatch();
-                                        sw.Start();
+                                        _logger.LogInformation({"\"method started Arguments: {@argumentLog}\""},{argumentList});
                                         try
                                         {{  ");
                                             if (!isVoid)
@@ -131,12 +123,12 @@ namespace LogGenerator
                                                 sb.Append("var result = ");
                                             }
                                             sb.AppendLine($"_target.{interfaceMethod.Name}({argumentList});");
-                                            sb.AppendLine($@"Console.WriteLine({$"$\" {interfaceMethod.Name} finished in {{sw.ElapsedMilliseconds}} ms \""});");
+                      sb.AppendLine($@"_logger.LogInformation({"\" {interfaceFullyQualifiedName}.{MethodName} finished result={@result}\""},""{interfaceFullyQualifiedName}"",""{interfaceMethod.Name}"",result);");
                                             if (!isVoid)
                                             {
                                                 sb.AppendLine(" return result;");
                                             } 
-                           sb.Append($@"}} catch (Exception e) {{ Console.WriteLine({$"$\"{interfaceMethod.Name} has an error: {{e.Message}}\""});throw; }}");
+                           sb.Append($@"}} catch (Exception e) {{ _logger.LogError(e,{$"$\"{interfaceMethod.Name} has an error: {{e.Message}}\""});throw; }}");
                        sb.Append($@"}}");
                                 }
             sb.Append(@"}");

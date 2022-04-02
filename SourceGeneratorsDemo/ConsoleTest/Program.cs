@@ -1,5 +1,7 @@
 ﻿using System;
 using ConsoleTest.Services;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ConsoleTest
 {
@@ -7,8 +9,9 @@ namespace ConsoleTest
     {
         static void Main(string[] args)
         {
-            var dd = new AccountingService().WithLogging();
-            Console.WriteLine(dd.GetClientAccounts("11"));
+            var log = NullLogger.Instance;
+            var dd = new AccountingService().WithLogging(log);
+            Console.WriteLine(dd.GetClientAccounts(new De(){A = "123123"}));
             Console.ReadKey();
         }
     }

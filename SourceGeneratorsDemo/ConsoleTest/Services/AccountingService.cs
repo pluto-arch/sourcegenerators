@@ -2,9 +2,9 @@
 
 public class AccountingService: IAccountingService
 {
-    public string GetClientAccounts(string client)
+    public string GetClientAccounts(De client)
     {
-        return client switch
+        return client.A switch
         {
             "Petya" => "aaa",
             _=>"ddd"
